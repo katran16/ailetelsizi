@@ -28,7 +28,7 @@
         .label { font-size: 0.5rem; color: #555; margin-top: 5px; }
     </style>
 </head>
-<body>
+    <body onclick="initAudio()">
     <button class="fs-btn" onclick="toggleFS()">TAM EKRAN</button>
     <div class="device">
         <div class="screen">
@@ -48,6 +48,13 @@
     </div>
 
     <script>
+        function initAudio() {
+    if (localStream) {
+        // Bu boş fonksiyon, kullanıcının ekrana ilk dokunuşunda 
+        // tarayıcı ses motorunu uyandıracaktır.
+        console.log("Ses motoru uyandırıldı");
+    }
+}
         const firebaseConfig = {
             apiKey: "AIzaSyBWQL8kVLE6mR6yGN_pAv8yz9yi2d_wvj4",
             authDomain: "ailetelsizi.firebaseapp.com",
