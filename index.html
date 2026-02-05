@@ -44,7 +44,7 @@
             <button class="ptt-btn" id="pttBtn">PTT</button>
             <button class="lock-btn" id="lockBtn" onclick="toggleLock()">LOCK</button>
         </div>
-        <div class="label">SİNYAL: %100 | NEON v8.0</div>
+        <div class="label">SİNYAL: %100 | NEON v8.1</div>
     </div>
 
     <script>
@@ -64,51 +64,62 @@
 
         const pttBtn = document.getElementById('pttBtn'), joinBtn = document.getElementById('joinBtn'), lockBtn = document.getElementById('lockBtn');
 
-        // Mikrofonu başlat
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+        // Mikrofonu başlat (Sürekli açık tut, sadece sustur)
+        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(s => {
             localStream = s;
             localStream.getAudioTracks()[0].enabled = false;
         }).catch(err => alert("Mikrofon hatası: " + err));
 
         function joinCloudRoom() {
             if (isConnected) return;
-            roomName = document.getElementById('roomName').value;
+            roomName = document.getElementById('roomName').value.trim();
             if(!roomName) return alert("Oda nosu gir!");
+            
             isConnected = true;
             joinBtn.disabled = true;
             joinBtn.innerText = "BAĞLANDI";
+
             peer = new Peer();
+
             peer.on('open', (id) => {
                 myPeerId = id;
                 document.getElementById('chanText').innerText = "CH: " + roomName;
                 document.getElementById('statusText').innerText = "DİNLEMEDE";
-                db.ref('rooms/' + roomName + '/' + id).set(true);
-                db.ref('rooms/' + roomName + '/' + id).onDisconnect().remove();
+                
+                const myRef = db.ref('rooms/' + roomName + '/' + id);
+                myRef.set(true);
+                myRef.onDisconnect().remove();
+
                 db.ref('rooms/' + roomName).on('value', (snap) => {
                     const data = snap.val() || {};
                     otherPeers = Object.keys(data).filter(pId => pId !== myPeerId);
                     document.getElementById('countText').innerText = "BAĞLI CİHAZ: " + otherPeers.length;
                 });
             });
+
             peer.on('call', (call) => {
                 call.answer(localStream);
                 call.on('stream', (remoteStream) => {
-                    const audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.play();
+                    playRemoteStream(remoteStream);
                 });
             });
         }
 
+        function playRemoteStream(stream) {
+            let audio = document.createElement('audio');
+            audio.srcObject = stream;
+            audio.autoplay = true;
+            audio.play().catch(e => console.log("Otomatik oynatma engellendi, etkileşim bekleniyor."));
+        }
+
         function startBroadcasting() {
-            if(!isConnected || pttBtn.classList.contains('transmitting')) return;
+            if(!isConnected || !localStream) return;
+            if(pttBtn.classList.contains('transmitting')) return;
             
             pttBtn.classList.add('transmitting');
             document.getElementById('statusText').innerText = "YAYINDA...";
             
-            if(localStream) {
-                localStream.getAudioTracks()[0].enabled = true;
-            }
+            localStream.getAudioTracks()[0].enabled = true;
             
             otherPeers.forEach(pId => {
                 const call = peer.call(pId, localStream);
@@ -126,7 +137,9 @@
                 localStream.getAudioTracks()[0].enabled = false;
             }
             
-            activeCalls.forEach(call => call.close());
+            activeCalls.forEach(call => {
+                if(call.open) call.close();
+            });
             activeCalls = [];
         }
 
@@ -147,12 +160,11 @@
             else document.exitFullscreen();
         }
 
-        // Fare ve Dokunma Olayları
+        // Kontroller
         pttBtn.addEventListener('mousedown', startBroadcasting);
         pttBtn.addEventListener('mouseup', stopBroadcasting);
         pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startBroadcasting(); });
         pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopBroadcasting(); });
-
     </script>
 </body>
 </html>
