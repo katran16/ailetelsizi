@@ -28,7 +28,7 @@
         .label { font-size: 0.5rem; color: #555; margin-top: 5px; }
     </style>
 </head>
-<body onclick="initAudio()">
+<body>
     <button class="fs-btn" onclick="toggleFS()">TAM EKRAN</button>
     <div class="device">
         <div class="screen">
@@ -63,13 +63,12 @@
         let activeCalls = [];
 
         const pttBtn = document.getElementById('pttBtn'), joinBtn = document.getElementById('joinBtn'), lockBtn = document.getElementById('lockBtn');
-        
 
+        // Mikrofonu başlat
         navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
             localStream = s;
-            // Başlangıçta mikrofonu sustur
             localStream.getAudioTracks()[0].enabled = false;
-        });
+        }).catch(err => alert("Mikrofon hatası: " + err));
 
         function joinCloudRoom() {
             if (isConnected) return;
@@ -102,31 +101,31 @@
         }
 
         function startBroadcasting() {
-            if(!isConnected || otherPeers.length === 0 || pttBtn.classList.contains('transmitting')) return;
-            beepIn.play();
+            if(!isConnected || pttBtn.classList.contains('transmitting')) return;
+            
             pttBtn.classList.add('transmitting');
             document.getElementById('statusText').innerText = "YAYINDA...";
             
-            // Mikrofonu aç
-            localStream.getAudioTracks()[0].enabled = true;
+            if(localStream) {
+                localStream.getAudioTracks()[0].enabled = true;
+            }
             
-            // Tüm peer'ları ara
             otherPeers.forEach(pId => {
                 const call = peer.call(pId, localStream);
-                activeCalls.push(call);
+                if(call) activeCalls.push(call);
             });
         }
 
         function stopBroadcasting() {
             if(isLocked || !pttBtn.classList.contains('transmitting')) return;
-            beepOut.play();
+            
             pttBtn.classList.remove('transmitting');
             document.getElementById('statusText').innerText = "DİNLEMEDE";
             
-            // Mikrofonu sustur
-            localStream.getAudioTracks()[0].enabled = false;
+            if(localStream) {
+                localStream.getAudioTracks()[0].enabled = false;
+            }
             
-            // Aramaları kapat
             activeCalls.forEach(call => call.close());
             activeCalls = [];
         }
@@ -139,7 +138,6 @@
                 startBroadcasting();
             } else {
                 lockBtn.classList.remove('locked');
-                isLocked = false;
                 stopBroadcasting();
             }
         }
@@ -149,11 +147,12 @@
             else document.exitFullscreen();
         }
 
+        // Fare ve Dokunma Olayları
         pttBtn.addEventListener('mousedown', startBroadcasting);
         pttBtn.addEventListener('mouseup', stopBroadcasting);
         pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startBroadcasting(); });
         pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopBroadcasting(); });
-        function initAudio() {}
+
     </script>
 </body>
 </html>
