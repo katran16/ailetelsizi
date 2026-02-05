@@ -63,8 +63,8 @@
         let activeCalls = [];
 
         const pttBtn = document.getElementById('pttBtn'), joinBtn = document.getElementById('joinBtn'), lockBtn = document.getElementById('lockBtn');
-        const beepIn = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
-        const beepOut = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
+        (const beepIn = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
+        (const beepOut = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
 
         navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
             localStream = s;
