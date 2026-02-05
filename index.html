@@ -3,55 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Cloud-Talkie Pro v11</title>
+    <title>Neon Cloud-Talkie Pro v12</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         :root { --neon-blue: #00f2fe; --neon-pink: #ff0055; --neon-green: #39ff14; }
+        
+        /* TÜM SAYFADA SEÇMEYİ VE MENÜLERİ ENGELLER */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            touch-action: none;
+        }
+
         body { 
             margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; 
             background: #0b0e14; font-family: sans-serif; color: white; overflow: hidden; 
-            touch-action: none; -webkit-user-select: none; user-select: none;
-            -webkit-touch-callout: none; /* iOS/Android uzun basma menüsünü engeller */
         }
+
         .device { width: 320px; height: 620px; background: #1a1d23; border-radius: 50px; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; padding: 25px; box-shadow: 0 0 40px #000; position: relative; }
         .screen { width: 100%; height: 140px; background: #000; margin-top: 10px; border-radius: 20px; border: 1px solid var(--neon-blue); display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,242,254,0.3); }
         .freq-display { font-size: 1.5rem; color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); font-family: monospace; }
         .status { font-size: 0.7rem; color: var(--neon-green); margin-top: 8px; letter-spacing: 2px; }
         .peer-list { font-size: 0.6rem; color: var(--neon-pink); margin-top: 5px; opacity: 0.8; }
+        
         .inputs { margin-top: 25px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
-        input { background: #000; border: 1px solid #444; color: var(--neon-blue); padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; outline: none; font-size: 1rem; }
+        input { 
+            background: #000; border: 1px solid #444; color: var(--neon-blue); padding: 15px; 
+            border-radius: 12px; text-align: center; font-weight: bold; outline: none; font-size: 1rem;
+            user-select: auto !important; /* Sadece input yazılabilsin */
+            touch-action: auto !important;
+        }
+
         .btn-join { background: var(--neon-blue); color: #000; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        
         .ptt-container { width: 100%; display: flex; justify-content: center; align-items: center; margin-top: auto; margin-bottom: 20px; position: relative; }
         
+        /* PTT TUŞU ÖZEL AYARI */
         .ptt-btn { 
             width: 170px; height: 170px; border-radius: 50%; border: 10px solid #222; 
-            background: radial-gradient(#222, #111); color: #333; font-size: 2rem; 
-            font-weight: 900; cursor: pointer; outline: none; 
-            touch-action: none; -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
+            background: radial-gradient(#222, #111); color: #444; font-size: 2rem; 
+            font-weight: 900; cursor: pointer; outline: none;
+            display: flex; justify-content: center; align-items: center;
         }
+
+        /* YAYINA GEÇİNCE RENK DEĞİŞİMİ */
         .ptt-btn.transmitting { 
-            color: var(--neon-pink) !important; border-color: var(--neon-pink) !important; 
-            box-shadow: 0 0 40px var(--neon-pink) !important; transform: scale(0.96); 
+            color: var(--neon-pink) !important; 
+            border-color: var(--neon-pink) !important; 
+            box-shadow: 0 0 50px var(--neon-pink) !important;
+            text-shadow: 0 0 10px var(--neon-pink);
         }
+
         .lock-btn { position: absolute; right: 0; width: 50px; height: 50px; border-radius: 50%; border: 2px solid #333; background: #222; color: #555; font-size: 0.6rem; font-weight: bold; cursor: pointer; outline: none; }
         .lock-btn.locked { border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 15px var(--neon-green); }
     </style>
 </head>
-<body oncontextmenu="return false;"> <div class="device">
+<body oncontextmenu="return false;"> 
+    <div class="device">
         <div class="screen">
             <div id="chanText" class="freq-display">OFFLINE</div>
             <div id="statusText" class="status">SİSTEM HAZIR</div>
             <div id="countText" class="peer-list">CİHAZ: 0</div>
         </div>
         <div class="inputs">
-            <input type="text" id="roomName" placeholder="ODA NO">
+            <input type="text" id="roomName" placeholder="ODA NO" onfocus="this.select()">
             <button class="btn-join" id="joinBtn" onclick="joinCloudRoom()">BAĞLAN</button>
         </div>
         <div class="ptt-container">
-            <button class="ptt-btn" id="pttBtn" onpointerdown="startBroadcasting(event)" onpointerup="stopBroadcasting(event)">PTT</button>
+            <div class="ptt-btn" id="pttBtn" 
+                 ontouchstart="startBroadcasting(event)" 
+                 ontouchend="stopBroadcasting(event)">PTT</div>
             <button class="lock-btn" id="lockBtn" onclick="toggleLock()">LOCK</button>
         </div>
     </div>
@@ -71,11 +96,17 @@
         let myPeerId, roomName, peer, localStream, otherPeers = [], isConnected = false, isLocked = false;
         let activeCalls = [];
 
-        // Mikrofonu başlat (Sayfa açılır açılmaz izin ister)
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+        // Mikrofonu en yüksek kalitede başlat
+        navigator.mediaDevices.getUserMedia({ 
+            audio: { 
+                echoCancellation: false, // Telsiz hissi için yankı engellemeyi kapatabiliriz
+                noiseSuppression: true,
+                autoGainControl: true 
+            } 
+        }).then(s => {
             localStream = s;
             localStream.getAudioTracks()[0].enabled = false;
-        }).catch(e => alert("Mikrofon izni şart!"));
+        }).catch(e => alert("Mikrofon hatası! Lütfen izin verin."));
 
         function joinCloudRoom() {
             if (isConnected) return;
@@ -83,17 +114,20 @@
             if(!roomName) return alert("Oda nosu gir!");
             isConnected = true;
             document.getElementById('joinBtn').innerText = "BAĞLANDI";
+            
             peer = new Peer();
             peer.on('open', (id) => {
                 myPeerId = id;
                 document.getElementById('chanText').innerText = "CH: " + roomName;
                 db.ref('rooms/' + roomName + '/' + id).set(true);
                 db.ref('rooms/' + roomName + '/' + id).onDisconnect().remove();
+                
                 db.ref('rooms/' + roomName).on('value', (snap) => {
                     otherPeers = Object.keys(snap.val() || {}).filter(pId => pId !== myPeerId);
-                    document.getElementById('countText').innerText = "CİHAZ: " + otherPeers.length;
+                    document.getElementById('countText').innerText = "CİHAZ: " + (otherPeers.length + 1);
                 });
             });
+
             peer.on('call', (call) => {
                 call.answer(localStream);
                 call.on('stream', (remoteStream) => {
@@ -105,11 +139,14 @@
         }
 
         function startBroadcasting(e) {
-            if(e) e.preventDefault();
+            if(e) { e.preventDefault(); e.stopPropagation(); }
             if(!isConnected || !localStream) return;
+            
             document.getElementById('pttBtn').classList.add('transmitting');
             document.getElementById('statusText').innerText = "YAYINDA...";
+            
             localStream.getAudioTracks()[0].enabled = true;
+            
             otherPeers.forEach(pId => {
                 const call = peer.call(pId, localStream);
                 activeCalls.push(call);
@@ -117,10 +154,12 @@
         }
 
         function stopBroadcasting(e) {
-            if(e) e.preventDefault();
+            if(e) { e.preventDefault(); e.stopPropagation(); }
             if(isLocked) return;
+            
             document.getElementById('pttBtn').classList.remove('transmitting');
             document.getElementById('statusText').innerText = "DİNLEMEDE";
+            
             if(localStream) localStream.getAudioTracks()[0].enabled = false;
             activeCalls.forEach(c => c.close());
             activeCalls = [];
