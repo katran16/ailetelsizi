@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Cloud-Talkie Pro v9</title>
+    <title>Neon Cloud-Talkie Pro v10</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         :root { --neon-blue: #00f2fe; --neon-pink: #ff0055; --neon-green: #39ff14; }
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #0b0e14; font-family: sans-serif; color: white; overflow: hidden; touch-action: manipulation; }
+        body { 
+            margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; 
+            background: #0b0e14; font-family: sans-serif; color: white; overflow: hidden; 
+            touch-action: none; -webkit-user-select: none; user-select: none;
+        }
         .fs-btn { position: absolute; top: 15px; right: 15px; background: rgba(0, 242, 254, 0.1); border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 8px 12px; border-radius: 8px; cursor: pointer; z-index: 99; font-size: 10px; font-weight: bold; }
         .device { width: 320px; height: 620px; background: #1a1d23; border-radius: 50px; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; padding: 25px; box-shadow: 0 0 40px #000; position: relative; }
         .screen { width: 100%; height: 140px; background: #000; margin-top: 10px; border-radius: 20px; border: 1px solid var(--neon-blue); display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,242,254,0.3); }
@@ -20,8 +24,19 @@
         input { background: #000; border: 1px solid #444; color: var(--neon-blue); padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; outline: none; font-size: 1rem; }
         .btn-join { background: var(--neon-blue); color: #000; border: none; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
         .ptt-container { width: 100%; display: flex; justify-content: center; align-items: center; margin-top: auto; margin-bottom: 20px; position: relative; }
-        .ptt-btn { width: 170px; height: 170px; border-radius: 50%; border: 10px solid #222; background: radial-gradient(#222, #111); color: #333; font-size: 2rem; font-weight: 900; cursor: pointer; transition: 0.1s; -webkit-tap-highlight-color: transparent; outline: none; }
-        .ptt-btn.transmitting { color: var(--neon-pink); border-color: var(--neon-pink); box-shadow: 0 0 40px var(--neon-pink); transform: scale(0.96); }
+        
+        /* PTT TUŞU DÜZENLEMESİ */
+        .ptt-btn { 
+            width: 170px; height: 170px; border-radius: 50%; border: 10px solid #222; 
+            background: radial-gradient(#222, #111); color: #333; font-size: 2rem; 
+            font-weight: 900; cursor: pointer; transition: 0.1s; 
+            outline: none; touch-action: none; -webkit-touch-callout: none;
+        }
+        .ptt-btn.transmitting { 
+            color: var(--neon-pink); border-color: var(--neon-pink); 
+            box-shadow: 0 0 40px var(--neon-pink); transform: scale(0.96); 
+        }
+        
         .lock-btn { position: absolute; right: 0; width: 50px; height: 50px; border-radius: 50%; border: 2px solid #333; background: #222; color: #555; font-size: 0.6rem; font-weight: bold; cursor: pointer; transition: 0.3s; outline: none; }
         .lock-btn.locked { border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 15px var(--neon-green); }
     </style>
@@ -59,13 +74,14 @@
         let myPeerId, roomName, peer, localStream, otherPeers = [], isConnected = false, isLocked = false;
         let activeCalls = [];
 
+        // SES MOTORUNU UYANDIRMA
         function initAudio() {
             if (!localStream) {
                 navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
                     localStream = s;
                     localStream.getAudioTracks()[0].enabled = false;
-                    document.getElementById('statusText').innerText = "MİKROFON HAZIR";
-                }).catch(e => alert("Mikrofon hatası: " + e));
+                    document.getElementById('statusText').innerText = "MİKROFON AKTİF";
+                }).catch(e => console.log("Mikrofon bekleniyor..."));
             }
         }
 
@@ -95,7 +111,7 @@
                 call.on('stream', (remoteStream) => {
                     const audio = new Audio();
                     audio.srcObject = remoteStream;
-                    audio.play();
+                    audio.play().catch(e => console.log("Oynatma hatası"));
                 });
             });
         }
@@ -122,22 +138,30 @@
         }
 
         function toggleLock() {
+            if(!isConnected) return;
             isLocked = !isLocked;
             const lb = document.getElementById('lockBtn');
             if(isLocked) { lb.classList.add('locked'); startBroadcasting(); }
             else { lb.classList.remove('locked'); stopBroadcasting(); }
         }
 
+        // DOKUNMATİK OLAYLARI (Pointer Events her şeyi kapsar)
+        const pBtn = document.getElementById('pttBtn');
+        pBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); startBroadcasting(); });
+        pBtn.addEventListener('pointerup', (e) => { e.preventDefault(); stopBroadcasting(); });
+        pBtn.addEventListener('pointerleave', (e) => { if(!isLocked) stopBroadcasting(); });
+
+        // BAĞLANTIYI CANLI TUTMA (Heartbeat)
+        setInterval(() => {
+            if (isConnected && myPeerId) {
+                db.ref('rooms/' + roomName + '/' + myPeerId).set(true);
+            }
+        }, 30000);
+
         function toggleFS() {
             if (!document.fullscreenElement) document.documentElement.requestFullscreen();
             else document.exitFullscreen();
         }
-
-        const pBtn = document.getElementById('pttBtn');
-        pBtn.addEventListener('mousedown', startBroadcasting);
-        pBtn.addEventListener('mouseup', stopBroadcasting);
-        pBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startBroadcasting(); });
-        pBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopBroadcasting(); });
     </script>
 </body>
 </html>
